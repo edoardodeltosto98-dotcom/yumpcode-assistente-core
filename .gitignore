@@ -1,0 +1,14 @@
+# dipendenze e build
+/node_modules
+/dist
+/coverage
+
+# segreti: mai nel repository (resta versionato solo .env.example)
+.env
+.env.*
+!.env.example
+
+# log e file di sistema
+*.log
+.DS_Store
+Thumbs.db

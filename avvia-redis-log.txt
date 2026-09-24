@@ -1,0 +1,5 @@
+Avvio Redis con Docker... 
+ Container yumpcode-redis Running 
+Redis avviato correttamente su localhost:6379 
+CONTAINER ID   IMAGE            COMMAND                  CREATED         STATUS         PORTS                                         NAMES
+24ac9422332e   redis:7-alpine   "docker-entrypoint.s…"   3 minutes ago   Up 3 minutes   0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp   yumpcode-redis

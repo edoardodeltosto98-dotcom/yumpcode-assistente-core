@@ -1,0 +1,54 @@
+=== Verifica accesso database (Supabase) === 
+Installazione dipendenze (pg)... 
+
+up to date in 2s
+npm warn install-scripts 1 package has install scripts not yet covered by allowScripts:
+npm warn install-scripts   msgpackr-extract@3.0.4 (install: node-gyp rebuild)
+npm warn install-scripts
+npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.
+ 
+Build... 
+
+> assistente-core@0.0.1 build
+> nest build
+
+ 
+Test... 
+
+> assistente-core@0.0.1 test
+> vitest run
+
+[33mThe plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the [1mresolve.tsconfigPaths[22m option. You can remove the plugin and set [1mresolve.tsconfigPaths: true[22m in your Vite config instead.[39m
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/edoar/workspace/yumpcode-assistente/assistente-core[39m
+
+ [32m✓[39m src/common/crypto/encryption.service.spec.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m src/app.controller.spec.ts [2m([22m[2m1 test[22m[2m)[22m[32m 295[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m2 passed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[32m5 passed[39m[22m[90m (5)[39m
+[2m   Start at [22m 14:24:21
+[2m   Duration [22m 2.02s[2m (transform 218ms, setup 0ms, import 2.05s, tests 312ms, environment 1ms)[22m
+
+ 
+Avvio app e chiamata a /health/db... 
+--- risultato /health/db --- 
+﻿{
+    "ok":  true,
+    "messaggio":  "Creato, riletto ed eliminato un cliente di prova su Supabase."
+}
+ 
+--- log app --- 
+[32m[Nest] 25552  - [39m24/09/2026, 14:24:27 [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[32m[Nest] 25552  - [39m24/09/2026, 14:24:27 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mEncryptionModule dependencies initialized[39m[38;5;3m +33ms[39m
+[32m[Nest] 25552  - [39m24/09/2026, 14:24:27 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mDatabaseModule dependencies initialized[39m[38;5;3m +2ms[39m
+[32m[Nest] 25552  - [39m24/09/2026, 14:24:27 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mQueueModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 25552  - [39m24/09/2026, 14:24:27 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAppModule dependencies initialized[39m[38;5;3m +2ms[39m
+[32m[Nest] 25552  - [39m24/09/2026, 14:24:27 [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAppController {/}:[39m[38;5;3m +11ms[39m
+[32m[Nest] 25552  - [39m24/09/2026, 14:24:27 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/, GET} route[39m[38;5;3m +7ms[39m
+[32m[Nest] 25552  - [39m24/09/2026, 14:24:27 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/health/db, GET} route[39m[38;5;3m +2ms[39m
+[32m[Nest] 25552  - [39m24/09/2026, 14:24:27 [32m    LOG[39m [38;5;3m[NestApplication] [39m[32mNest application successfully started[39m[38;5;3m +20ms[39m
+[32m[Nest] 25552  - [39m24/09/2026, 14:24:27 [32m    LOG[39m [38;5;3m[DatabaseService] [39m[32mConnessione a Supabase riuscita[39m
+[32m[Nest] 25552  - [39m24/09/2026, 14:24:29 [32m    LOG[39m [38;5;3m[HTTP] [39m[32mGET /health/db - 101ms[39m
+ 
+=== Fine verifica === 
