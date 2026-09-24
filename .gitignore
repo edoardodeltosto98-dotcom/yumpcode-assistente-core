@@ -2,6 +2,7 @@
 /node_modules
 /dist
 /coverage
+*.tsbuildinfo
 
 # segreti: mai nel repository (resta versionato solo .env.example)
 .env
@@ -10,5 +11,9 @@
 
 # log e file di sistema
 *.log
+*-log.txt
+app-stdout.txt
+app-stderr.txt
+db-check-result.txt
 .DS_Store
 Thumbs.db

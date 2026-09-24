@@ -1,4 +1,0 @@
-﻿{
-    "ok":  true,
-    "messaggio":  "Creato, riletto ed eliminato un cliente di prova su Supabase."
-}
