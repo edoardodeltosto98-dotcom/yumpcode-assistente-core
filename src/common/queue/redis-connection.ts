@@ -13,7 +13,11 @@ export function getRedisConnectionOptions(): RedisOptions {
   return {
     host: parsed.hostname,
     port: Number(parsed.port || 6379),
-    password: parsed.password || undefined,
+    username: parsed.username ? decodeURIComponent(parsed.username) : undefined,
+    password: parsed.password ? decodeURIComponent(parsed.password) : undefined,
+    // "rediss://" (due s) = connessione cifrata: la richiedono i Redis
+    // ospitati online (es. Upstash). In locale si usa "redis://", senza TLS.
+    ...(parsed.protocol === 'rediss:' ? { tls: {} } : {}),
     maxRetriesPerRequest: null,
   };
 }

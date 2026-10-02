@@ -1,0 +1,47 @@
+# Deploy dimostrativo del backend su Render (piano gratuito).
+# Limiti del piano gratuito: il servizio si spegne dopo 15 minuti senza
+# richieste e riparte in circa un minuto. Mentre e' spento non esegue le
+# azioni approvate. Va bene per una demo, non per clienti reali.
+#
+# Le variabili con "sync: false" sono segrete: NON hanno un valore qui,
+# vanno inserite a mano nella dashboard di Render.
+services:
+  - type: web
+    name: yumpcode-assistente-core
+    runtime: node
+    plan: free
+    region: frankfurt
+    # --include=dev: "nest build" e' una dipendenza di sviluppo, e con
+    # NODE_ENV=production npm la salterebbe.
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: CLERK_ISSUER
+        value: https://alive-owl-9191.clerk.accounts.dev
+      # Indirizzo pubblico del cruscotto (Vercel) e di questo backend (Render).
+      - key: CORS_ORIGINS
+        sync: false
+      - key: CLERK_AUTHORIZED_PARTIES
+        sync: false
+      - key: BACKEND_PUBLIC_URL
+        sync: false
+      - key: GOOGLE_CALLBACK_URL
+        sync: false
+      # Segreti
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: CLERK_WEBHOOK_SECRET
+        sync: false

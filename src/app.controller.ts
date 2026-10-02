@@ -1,5 +1,6 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, NotFoundException } from '@nestjs/common';
 import { AppService } from './app.service.js';
+import { Pubblico } from './common/auth/decorators.js';
 import { ClientiRepository } from './common/database/repositories/clienti.repository.js';
 
 @Controller()
@@ -10,6 +11,7 @@ export class AppController {
   ) {}
 
   @Get()
+  @Pubblico()
   getHello(): string {
     return this.appService.getHello();
   }
@@ -17,8 +19,12 @@ export class AppController {
   // Verifica end-to-end: crea un cliente di prova, lo rilegge, lo elimina.
   // Usato per confermare che assistente-core parla davvero con Supabase
   // (Fase 4), non solo che la app si avvia.
+  // Pubblico solo in sviluppo: in produzione (NODE_ENV=production) non
+  // esiste, perche' scrive nel database senza login.
   @Get('health/db')
+  @Pubblico()
   async checkDatabase() {
+    if (process.env.NODE_ENV === 'production') throw new NotFoundException();
     const prova = await this.clientiRepository.crea(
       'Cliente di prova (health check)',
       `health-check-${Date.now()}@example.invalid`,

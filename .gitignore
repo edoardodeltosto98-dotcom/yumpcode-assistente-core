@@ -12,6 +12,7 @@
 # log e file di sistema
 *.log
 *-log.txt
+verifica-*.txt
 app-stdout.txt
 app-stderr.txt
 db-check-result.txt
