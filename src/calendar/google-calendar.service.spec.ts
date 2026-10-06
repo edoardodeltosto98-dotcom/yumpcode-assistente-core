@@ -81,6 +81,23 @@ describe('GoogleCalendarService', () => {
     expect(JSON.parse(String(opzioni.body)).summary).toBe('Nuovo appuntamento');
   });
 
+  it('con "fuso": manda a Google l\'orario cosi\' com\'e\' insieme al fuso', async () => {
+    const fetchSpy = vi.fn(async () => ({ ok: true, json: async () => ({ id: 'evt' }) }));
+    global.fetch = fetchSpy as unknown as typeof fetch;
+
+    const service = new GoogleCalendarService(creaTokenServiceFinto());
+    await service.creaEvento('cliente-1', {
+      titolo: 'Appuntamento',
+      inizio: '2026-10-05T10:00:00',
+      fine: '2026-10-05T10:30:00',
+      fuso: 'Europe/Rome',
+    });
+
+    const corpo = JSON.parse(String((fetchSpy.mock.calls[0] as unknown as [string, RequestInit])[1].body));
+    expect(corpo.start).toEqual({ dateTime: '2026-10-05T10:00:00', timeZone: 'Europe/Rome' });
+    expect(corpo.end).toEqual({ dateTime: '2026-10-05T10:30:00', timeZone: 'Europe/Rome' });
+  });
+
   it('con un id scelto da noi: se l\'evento esiste gia\' (409) restituisce quello, senza doppioni', async () => {
     const fetchSpy = vi
       .fn()

@@ -14,9 +14,12 @@ export interface EventoCalendario {
 export interface NuovoEvento {
   titolo: string;
   descrizione?: string;
-  // ISO 8601 con fuso orario, es. "2026-10-01T10:00:00+02:00"
+  // Con "fuso": orario da orologio senza fuso, es. "2026-10-01T10:00:00".
+  // Senza "fuso": ISO 8601 completo, es. "2026-10-01T10:00:00+02:00".
   inizio: string;
   fine: string;
+  // Fuso IANA in cui leggere inizio e fine, es. "Europe/Rome".
+  fuso?: string;
 }
 
 const CALENDAR_BASE_URL = 'https://www.googleapis.com/calendar/v3';
@@ -95,8 +98,8 @@ export class GoogleCalendarService {
         id: idEvento,
         summary: evento.titolo,
         description: evento.descrizione,
-        start: { dateTime: evento.inizio },
-        end: { dateTime: evento.fine },
+        start: { dateTime: evento.inizio, timeZone: evento.fuso },
+        end: { dateTime: evento.fine, timeZone: evento.fuso },
       }),
     });
 

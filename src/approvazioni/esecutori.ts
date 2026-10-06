@@ -1,6 +1,7 @@
 import { UnrecoverableError } from 'bullmq';
 import type { Azione } from '../common/database/repositories/azioni.repository.js';
 import type { GoogleCalendarService } from '../calendar/google-calendar.service.js';
+import { FUSO } from './numeri.js';
 
 // Errore che non ha senso ritentare (azione sparita, interruttore spento,
 // nessun esecutore, dati dell'azione sbagliati): estende UnrecoverableError,
@@ -49,11 +50,15 @@ export function creaEsecutoreTestFallisce(): EsecutoreAzione {
 
 export const TIPO_EVENTO_CALENDARIO = 'evento-calendario';
 
-const ISO_CON_FUSO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
+// Data e ora "da orologio", senza fuso: "2026-10-05T09:00" o "2026-10-05T09:00:00".
+const ORA_LOCALE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/;
 
 // Primo esecutore vero: crea un evento nel Google Calendar del cliente.
 // I dati dell'evento stanno in azione.dettagli.evento:
-//   { titolo, descrizione?, inizio, fine }  (date ISO 8601 con fuso orario)
+//   { titolo, descrizione?, inizio, fine }
+// "inizio" e "fine" sono orari italiani scritti SENZA fuso ("2026-10-05T09:00"):
+// il fuso lo mettiamo noi (Europe/Rome), cosi' l'orario non dipende dal PC o
+// dal browser di chi ha proposto l'azione. Date con "Z" o "+02:00" sono rifiutate.
 //
 // Niente doppioni: l'id dell'evento su Google e' ricavato dall'id dell'azione,
 // quindi se un tentativo crea l'evento ma poi cade la rete, il tentativo
@@ -83,18 +88,31 @@ function leggiEvento(azione: Azione) {
   if (!e || typeof e !== 'object') throw new ErroreDefinitivo('Dati dell\'evento mancanti (dettagli.evento).');
   const titolo = typeof e.titolo === 'string' ? e.titolo.trim() : '';
   if (!titolo) throw new ErroreDefinitivo('Evento senza titolo.');
-  for (const campo of ['inizio', 'fine'] as const) {
-    if (typeof e[campo] !== 'string' || !ISO_CON_FUSO.test(e[campo])) {
-      throw new ErroreDefinitivo(`Evento: "${campo}" deve essere una data ISO 8601 con fuso orario.`);
-    }
-  }
-  if (new Date(e.fine as string) <= new Date(e.inizio as string)) {
-    throw new ErroreDefinitivo('Evento: la fine deve essere dopo l\'inizio.');
-  }
+  const inizio = leggiOra(e.inizio, 'inizio');
+  const fine = leggiOra(e.fine, 'fine');
+  // Stesso formato e stesso fuso: il confronto tra testi equivale a quello tra orari.
+  if (fine <= inizio) throw new ErroreDefinitivo('Evento: la fine deve essere dopo l\'inizio.');
   return {
     titolo,
     descrizione: typeof e.descrizione === 'string' ? e.descrizione : undefined,
-    inizio: e.inizio as string,
-    fine: e.fine as string,
+    inizio,
+    fine,
+    fuso: FUSO,
   };
+}
+
+// Controlla formato e validita' (niente 31 febbraio o ore 25) e restituisce
+// sempre "AAAA-MM-GGTHH:MM:SS".
+function leggiOra(valore: unknown, campo: string): string {
+  const m = typeof valore === 'string' ? ORA_LOCALE.exec(valore) : null;
+  if (!m) {
+    throw new ErroreDefinitivo(`Evento: "${campo}" deve essere data e ora italiane senza fuso, es. "2026-10-05T09:00".`);
+  }
+  const [anno, mese, giorno, ore, minuti, secondi] = m.slice(1).map((n) => Number(n ?? 0));
+  const d = new Date(Date.UTC(anno, mese - 1, giorno, ore, minuti, secondi));
+  const valida =
+    d.getUTCFullYear() === anno && d.getUTCMonth() === mese - 1 && d.getUTCDate() === giorno &&
+    d.getUTCHours() === ore && d.getUTCMinutes() === minuti && d.getUTCSeconds() === secondi;
+  if (!valida) throw new ErroreDefinitivo(`Evento: "${campo}" non e' una data valida.`);
+  return `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6] ?? '00'}`;
 }

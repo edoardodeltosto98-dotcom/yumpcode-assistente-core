@@ -3,7 +3,7 @@ import type { Azione } from '../common/database/repositories/azioni.repository.j
 import { ErroreDefinitivo, creaEsecutoreEventoCalendario, creaEsecutoreTestFallisce } from './esecutori.js';
 
 const ID = '3f2b8c1e-9a4d-4e6f-8b7a-0c1d2e3f4a5b';
-const evento = { titolo: 'Chiamata cliente', inizio: '2026-10-05T09:00:00+02:00', fine: '2026-10-05T09:30:00+02:00' };
+const evento = { titolo: 'Chiamata cliente', inizio: '2026-10-05T09:00', fine: '2026-10-05T09:30:00' };
 const azione = (dettagli: Record<string, unknown> | null): Azione =>
   ({ id: ID, cliente_id: 'c1', tipo: 'evento-calendario', dettagli }) as Azione;
 
@@ -14,15 +14,24 @@ describe('esecutore evento-calendario', () => {
 
     const risultato = await e.esegui(azione({ evento }));
 
-    expect(creaEvento).toHaveBeenCalledWith('c1', { ...evento, descrizione: undefined }, ID.replace(/-/g, ''));
+    // Orari passati cosi' come sono (ora italiana), con il fuso fissato da noi.
+    expect(creaEvento).toHaveBeenCalledWith(
+      'c1',
+      { titolo: evento.titolo, descrizione: undefined, inizio: '2026-10-05T09:00:00', fine: '2026-10-05T09:30:00', fuso: 'Europe/Rome' },
+      ID.replace(/-/g, ''),
+    );
     expect(risultato).toMatchObject({ eventoId: 'x', link: 'https://cal/x' });
   });
 
   it.each([
     ['dettagli mancanti', null],
     ['senza titolo', { evento: { ...evento, titolo: ' ' } }],
-    ['data senza fuso orario', { evento: { ...evento, inizio: '2026-10-05T09:00:00' } }],
-    ['fine prima dell\'inizio', { evento: { ...evento, fine: '2026-10-05T08:00:00+02:00' } }],
+    ['data con fuso (Z)', { evento: { ...evento, inizio: '2026-10-05T07:00:00.000Z' } }],
+    ['data con fuso (+02:00)', { evento: { ...evento, inizio: '2026-10-05T09:00:00+02:00' } }],
+    ['data inesistente', { evento: { ...evento, inizio: '2026-02-31T09:00' } }],
+    ['ora inesistente', { evento: { ...evento, inizio: '2026-10-05T25:00' } }],
+    ['fine prima dell\'inizio', { evento: { ...evento, fine: '2026-10-05T08:00' } }],
+    ['fine uguale all\'inizio', { evento: { ...evento, fine: '2026-10-05T09:00' } }],
   ])('dati non validi (%s): errore definitivo, Google non viene chiamato', async (_nome, dettagli) => {
     const creaEvento = vi.fn();
     const e = creaEsecutoreEventoCalendario({ creaEvento } as never);
