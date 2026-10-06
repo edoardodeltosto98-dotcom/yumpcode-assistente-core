@@ -11,9 +11,11 @@ services:
     runtime: node
     plan: free
     region: frankfurt
-    # --include=dev: "nest build" e' una dipendenza di sviluppo, e con
+    # "npm install" e non "npm ci": il npm di Render e' piu' severo di quello
+    # del PC e rifiuta il package-lock. --include=dev: "nest build" e' una
+    # dipendenza di sviluppo, e con
     # NODE_ENV=production npm la salterebbe.
-    buildCommand: npm ci --include=dev && npm run build
+    buildCommand: npm install --include=dev --no-audit --no-fund && npm run build
     startCommand: npm run start:prod
     healthCheckPath: /
     envVars:
