@@ -1,6 +1,11 @@
 import { NotFoundException } from '@nestjs/common';
 import type { Azione } from '../common/database/repositories/azioni.repository.js';
-import { ErroreDefinitivo, creaEsecutoreEventoCalendario, creaEsecutoreTestFallisce } from './esecutori.js';
+import {
+  ErroreDefinitivo,
+  creaEsecutoreEventoCalendario,
+  creaEsecutorePromemoriaScadenza,
+  creaEsecutoreTestFallisce,
+} from './esecutori.js';
 
 const ID = '3f2b8c1e-9a4d-4e6f-8b7a-0c1d2e3f4a5b';
 const evento = { titolo: 'Chiamata cliente', inizio: '2026-10-05T09:00', fine: '2026-10-05T09:30:00' };
@@ -58,5 +63,42 @@ describe('esecutore test-fallisce', () => {
     const e = creaEsecutoreTestFallisce();
     await expect(e.esegui(azione(null))).rejects.toThrow(ErroreDefinitivo);
     await expect(e.esegui(azione(null))).resolves.toBeUndefined();
+  });
+});
+
+describe('esecutore promemoria-scadenza', () => {
+  const scadenza = { titolo: 'Fattura Rossi', data: '2026-11-30', giorniPreavviso: 7, note: 'Bonifico' };
+
+  it('crea un evento di tutto il giorno nella data di scadenza, con avviso 7 giorni prima alle 9:00', async () => {
+    const creaEventoGiornaliero = vi.fn().mockResolvedValue({ id: 'x', link: 'https://cal/x' });
+    const e = creaEsecutorePromemoriaScadenza({ creaEventoGiornaliero } as never);
+
+    const risultato = await e.esegui(azione({ scadenza }));
+
+    const [cliente, evento, id] = creaEventoGiornaliero.mock.calls[0];
+    expect(cliente).toBe('c1');
+    expect(id).toBe(ID.replace(/-/g, ''));
+    expect(evento).toMatchObject({
+      titolo: 'Scadenza: Fattura Rossi',
+      giorno: '2026-11-30',
+      giornoFine: '2026-12-01',
+      avvisoMinuti: 7 * 1440 - 540,
+    });
+    expect(evento.descrizione).toContain('Bonifico');
+    expect(risultato).toMatchObject({ eventoId: 'x', link: 'https://cal/x', data: '2026-11-30' });
+  });
+
+  it('dati non validi: errore definitivo, Google non viene chiamato', async () => {
+    const creaEventoGiornaliero = vi.fn();
+    const e = creaEsecutorePromemoriaScadenza({ creaEventoGiornaliero } as never);
+    await expect(e.esegui(azione({ scadenza: { ...scadenza, data: '2026-02-30' } }))).rejects.toThrow(ErroreDefinitivo);
+    await expect(e.esegui(azione(null))).rejects.toThrow(ErroreDefinitivo);
+    expect(creaEventoGiornaliero).not.toHaveBeenCalled();
+  });
+
+  it('account Google non collegato: errore definitivo', async () => {
+    const creaEventoGiornaliero = vi.fn().mockRejectedValue(new NotFoundException('Nessun account Google collegato.'));
+    const e = creaEsecutorePromemoriaScadenza({ creaEventoGiornaliero } as never);
+    await expect(e.esegui(azione({ scadenza }))).rejects.toThrow(ErroreDefinitivo);
   });
 });

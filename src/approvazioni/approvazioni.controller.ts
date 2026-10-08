@@ -12,14 +12,22 @@ export class ApprovazioniController {
     private readonly approvazioni: ApprovazioniService,
   ) {}
 
-  // GET /azioni?stato=in_attesa&limite=50
+  // GET /azioni?stato=in_attesa&tipo=promemoria-scadenza&limite=50
   @Get()
-  async elenca(@Contesto() ctx: ContestoRichiesta, @Query('stato') stato?: string, @Query('limite') limite?: string) {
+  async elenca(
+    @Contesto() ctx: ContestoRichiesta,
+    @Query('stato') stato?: string,
+    @Query('limite') limite?: string,
+    @Query('tipo') tipo?: string,
+  ) {
     if (stato && !STATI_AZIONE.includes(stato as StatoAzione)) {
       throw new BadRequestException(`Stato non valido. Ammessi: ${STATI_AZIONE.join(', ')}.`);
     }
+    if (tipo !== undefined && !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(tipo)) {
+      throw new BadRequestException('Tipo non valido.');
+    }
     const n = Math.min(Math.max(Number(limite) || 50, 1), 200);
-    return { ok: true, azioni: await this.azioni.trovaPerCliente(ctx.cliente.id, n, stato as StatoAzione | undefined) };
+    return { ok: true, azioni: await this.azioni.trovaPerCliente(ctx.cliente.id, n, stato as StatoAzione | undefined, tipo) };
   }
 
   // GET /azioni/:id  -> azione + storico dei passaggi di stato

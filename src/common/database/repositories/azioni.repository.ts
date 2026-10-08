@@ -89,13 +89,14 @@ export class AzioniRepository {
   }
 
   // Conta le azioni gia' create oggi per cliente+processo (tetto
-  // "maxAzioniGiorno" della regola). "Oggi" e' calcolato lato database,
-  // cosi' non dipende dal fuso orario del server Node.
+  // "maxAzioniGiorno" della regola). "Oggi" e' il giorno italiano, calcolato
+  // lato database: si riparte a mezzanotte in Italia, qualunque sia il fuso
+  // del server o del database.
   async contaOggi(clienteId: string, processo: string): Promise<number> {
     const { rows } = await this.db.query<{ totale: string }>(
       `select count(*)::text as totale from azioni
        where cliente_id = $1 and processo = $2
-         and created_at >= date_trunc('day', now())`,
+         and created_at >= date_trunc('day', now() at time zone 'Europe/Rome') at time zone 'Europe/Rome'`,
       [clienteId, processo],
     );
     return Number(rows[0]?.totale ?? '0');
@@ -118,12 +119,12 @@ export class AzioniRepository {
     return rows;
   }
 
-  async trovaPerCliente(clienteId: string, limite = 50, stato?: StatoAzione): Promise<Azione[]> {
+  async trovaPerCliente(clienteId: string, limite = 50, stato?: StatoAzione, tipo?: string): Promise<Azione[]> {
     const { rows } = await this.db.query<Azione>(
       `select * from azioni
-       where cliente_id = $1 and ($3::text is null or stato = $3)
+       where cliente_id = $1 and ($3::text is null or stato = $3) and ($4::text is null or tipo = $4)
        order by created_at desc limit $2`,
-      [clienteId, limite, stato ?? null],
+      [clienteId, limite, stato ?? null, tipo ?? null],
     );
     return rows;
   }

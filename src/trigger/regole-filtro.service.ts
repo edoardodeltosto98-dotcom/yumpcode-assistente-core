@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ClientiRepository } from '../common/database/repositories/clienti.repository.js';
 import { RegoleRepository } from '../common/database/repositories/regole.repository.js';
 import { AzioniRepository } from '../common/database/repositories/azioni.repository.js';
+import { FUSO } from '../approvazioni/numeri.js';
 
 export interface EsitoFiltro {
   consentito: boolean;
@@ -62,12 +63,11 @@ export class RegoleFiltroService {
     return { consentito: true };
   }
 
-  // Confronta solo ore/minuti correnti (fuso del server) con la fascia
-  // della regola, gestendo anche una fascia che attraversa la
-  // mezzanotte (es. 22:00-06:00).
-  private dentroFasciaOraria(inizio: string, fine: string): boolean {
-    const ora = new Date();
-    const minutiOra = ora.getHours() * 60 + ora.getMinutes();
+  // Confronta ore/minuti correnti IN ITALIA (non del server, che online gira
+  // in UTC) con la fascia della regola, gestendo anche una fascia che
+  // attraversa la mezzanotte (es. 22:00-06:00).
+  private dentroFasciaOraria(inizio: string, fine: string, adesso = new Date()): boolean {
+    const minutiOra = minutiInItalia(adesso);
     const minutiInizio = this.aMinuti(inizio);
     const minutiFine = this.aMinuti(fine);
 
@@ -81,4 +81,11 @@ export class RegoleFiltroService {
     const [ore, minuti] = orario.split(':').map(Number);
     return ore * 60 + minuti;
   }
+}
+
+// Minuti trascorsi dalla mezzanotte, ora italiana (ora legale compresa).
+export function minutiInItalia(adesso: Date): number {
+  const parti = new Intl.DateTimeFormat('en-GB', { timeZone: FUSO, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(adesso);
+  const valore = (tipo: string) => Number(parti.find((p) => p.type === tipo)?.value ?? 0);
+  return valore('hour') * 60 + valore('minute');
 }

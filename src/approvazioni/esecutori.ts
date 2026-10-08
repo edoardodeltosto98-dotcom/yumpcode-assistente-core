@@ -2,6 +2,7 @@ import { UnrecoverableError } from 'bullmq';
 import type { Azione } from '../common/database/repositories/azioni.repository.js';
 import type { GoogleCalendarService } from '../calendar/google-calendar.service.js';
 import { FUSO } from './numeri.js';
+import { TIPO_PROMEMORIA_SCADENZA, giornoDopo, leggiScadenza, minutiAvviso } from '../scadenze/scadenza.js';
 
 // Errore che non ha senso ritentare (azione sparita, interruttore spento,
 // nessun esecutore, dati dell'azione sbagliati): estende UnrecoverableError,
@@ -68,19 +69,55 @@ export function creaEsecutoreEventoCalendario(calendar: GoogleCalendarService): 
     tipo: TIPO_EVENTO_CALENDARIO,
     async esegui(azione) {
       const evento = leggiEvento(azione);
-      let creato;
-      try {
-        creato = await calendar.creaEvento(azione.cliente_id, evento, azione.id.replace(/-/g, ''));
-      } catch (err) {
-        // Account Google non collegato (404) o dati rifiutati (400): ritentare
-        // da soli non serve, deve intervenire una persona.
-        const status = (err as { getStatus?: () => number }).getStatus?.();
-        if (status === 404 || status === 400) throw new ErroreDefinitivo((err as Error).message);
-        throw err;
-      }
+      const creato = await chiamaGoogle(() => calendar.creaEvento(azione.cliente_id, evento, azione.id.replace(/-/g, '')));
       return { eventoId: creato.id, link: creato.link, inizio: creato.inizio, fine: creato.fine };
     },
   };
+}
+
+// Promemoria di scadenza: evento di tutto il giorno nella data di scadenza,
+// con avviso N giorni prima. Dati in azione.dettagli.scadenza
+// ({ titolo, data, giorniPreavviso, note? }, vedi scadenze/scadenza.ts).
+export function creaEsecutorePromemoriaScadenza(calendar: GoogleCalendarService): EsecutoreAzione {
+  return {
+    tipo: TIPO_PROMEMORIA_SCADENZA,
+    async esegui(azione) {
+      const scadenza = leggiScadenza(azione.dettagli?.scadenza);
+      if (typeof scadenza === 'string') throw new ErroreDefinitivo(`Scadenza: ${scadenza}`);
+      const descrizione = [
+        scadenza.note,
+        `Promemoria creato dall'assistente YUMPCODE (avviso ${scadenza.giorniPreavviso} giorni prima).`,
+      ]
+        .filter(Boolean)
+        .join('\n\n');
+      const creato = await chiamaGoogle(() =>
+        calendar.creaEventoGiornaliero(
+          azione.cliente_id,
+          {
+            titolo: `Scadenza: ${scadenza.titolo}`,
+            descrizione,
+            giorno: scadenza.data,
+            giornoFine: giornoDopo(scadenza.data),
+            avvisoMinuti: minutiAvviso(scadenza.giorniPreavviso),
+          },
+          azione.id.replace(/-/g, ''),
+        ),
+      );
+      return { eventoId: creato.id, link: creato.link, data: scadenza.data };
+    },
+  };
+}
+
+// Account Google non collegato (404) o dati rifiutati (400): ritentare da
+// soli non serve, deve intervenire una persona.
+async function chiamaGoogle<T>(chiamata: () => Promise<T>): Promise<T> {
+  try {
+    return await chiamata();
+  } catch (err) {
+    const status = (err as { getStatus?: () => number }).getStatus?.();
+    if (status === 404 || status === 400) throw new ErroreDefinitivo((err as Error).message);
+    throw err;
+  }
 }
 
 function leggiEvento(azione: Azione) {

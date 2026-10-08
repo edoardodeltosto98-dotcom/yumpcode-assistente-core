@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { RegoleFiltroService } from './regole-filtro.service.js';
+import { RegoleFiltroService, minutiInItalia } from './regole-filtro.service.js';
 import type { ClientiRepository, Cliente } from '../common/database/repositories/clienti.repository.js';
 import type { RegoleRepository, Regola } from '../common/database/repositories/regole.repository.js';
 import type { AzioniRepository } from '../common/database/repositories/azioni.repository.js';
@@ -135,5 +135,13 @@ describe('RegoleFiltroService', () => {
     const esito = await service.valuta('cliente-1', 'solleciti');
     expect(esito.consentito).toBe(false);
     expect(esito.motivo).toMatch(/tetto giornaliero/i);
+  });
+});
+
+describe('minutiInItalia', () => {
+  it('usa l\'ora italiana, non quella del server (ora legale e solare)', () => {
+    expect(minutiInItalia(new Date('2026-10-08T07:30:00Z'))).toBe(9 * 60 + 30); // estate: UTC+2
+    expect(minutiInItalia(new Date('2026-12-08T07:30:00Z'))).toBe(8 * 60 + 30); // inverno: UTC+1
+    expect(minutiInItalia(new Date('2026-10-08T22:15:00Z'))).toBe(15); // gia' il giorno dopo in Italia
   });
 });

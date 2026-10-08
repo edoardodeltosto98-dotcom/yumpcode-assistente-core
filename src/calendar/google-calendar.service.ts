@@ -22,6 +22,15 @@ export interface NuovoEvento {
   fuso?: string;
 }
 
+// Evento di tutto il giorno, con un avviso (notifica ed email) in anticipo.
+export interface NuovoEventoGiornaliero {
+  titolo: string;
+  descrizione?: string;
+  giorno: string; // "AAAA-MM-GG"
+  giornoFine: string; // giorno DOPO l'ultimo (per Google la fine e' esclusa)
+  avvisoMinuti: number; // anticipo rispetto alla mezzanotte del giorno
+}
+
 const CALENDAR_BASE_URL = 'https://www.googleapis.com/calendar/v3';
 
 // Wrapper minimo sulle API di Google Calendar (calendario primario del
@@ -75,9 +84,7 @@ export class GoogleCalendarService {
     }));
   }
 
-  // idEvento (facoltativo): id scelto da noi (solo cifre e lettere a-v). Se
-  // l'evento con quell'id esiste gia', Google risponde 409 e noi restituiamo
-  // quello esistente: richiamare due volte non crea doppioni.
+  // idEvento: vedi inserisci().
   async creaEvento(clienteId: string, evento: NuovoEvento, idEvento?: string): Promise<EventoCalendario> {
     if (!evento.titolo?.trim()) {
       throw new BadRequestException('"titolo" e obbligatorio.');
@@ -86,6 +93,56 @@ export class GoogleCalendarService {
       throw new BadRequestException('"inizio" e "fine" sono obbligatori (ISO 8601).');
     }
 
+    return this.inserisci(
+      clienteId,
+      {
+        summary: evento.titolo,
+        description: evento.descrizione,
+        start: { dateTime: evento.inizio, timeZone: evento.fuso },
+        end: { dateTime: evento.fine, timeZone: evento.fuso },
+      },
+      evento.titolo,
+      idEvento,
+    );
+  }
+
+  async creaEventoGiornaliero(
+    clienteId: string,
+    evento: NuovoEventoGiornaliero,
+    idEvento?: string,
+  ): Promise<EventoCalendario> {
+    if (!evento.titolo?.trim()) {
+      throw new BadRequestException('"titolo" e obbligatorio.');
+    }
+    return this.inserisci(
+      clienteId,
+      {
+        summary: evento.titolo,
+        description: evento.descrizione,
+        start: { date: evento.giorno },
+        end: { date: evento.giornoFine },
+        reminders: {
+          useDefault: false,
+          overrides: [
+            { method: 'popup', minutes: evento.avvisoMinuti },
+            { method: 'email', minutes: evento.avvisoMinuti },
+          ],
+        },
+      },
+      evento.titolo,
+      idEvento,
+    );
+  }
+
+  // idEvento (facoltativo): id scelto da noi (solo cifre e lettere a-v). Se
+  // l'evento con quell'id esiste gia', Google risponde 409 e noi restituiamo
+  // quello esistente: richiamare due volte non crea doppioni.
+  private async inserisci(
+    clienteId: string,
+    corpo: Record<string, unknown>,
+    titolo: string,
+    idEvento?: string,
+  ): Promise<EventoCalendario> {
     const accessToken = await this.googleToken.ottieniAccessTokenValido(clienteId);
 
     const risposta = await fetch(`${CALENDAR_BASE_URL}/calendars/primary/events`, {
@@ -94,13 +151,7 @@ export class GoogleCalendarService {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        id: idEvento,
-        summary: evento.titolo,
-        description: evento.descrizione,
-        start: { dateTime: evento.inizio, timeZone: evento.fuso },
-        end: { dateTime: evento.fine, timeZone: evento.fuso },
-      }),
+      body: JSON.stringify({ id: idEvento, ...corpo }),
     });
 
     let rispostaEvento = risposta;
@@ -123,7 +174,7 @@ export class GoogleCalendarService {
 
     return {
       id: creato.id,
-      titolo: creato.summary ?? evento.titolo,
+      titolo: creato.summary ?? titolo,
       inizio: creato.start?.dateTime ?? creato.start?.date ?? null,
       fine: creato.end?.dateTime ?? creato.end?.date ?? null,
       link: creato.htmlLink ?? null,

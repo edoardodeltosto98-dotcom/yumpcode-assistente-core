@@ -1,3 +1,4 @@
+import { FUSO } from '../approvazioni/numeri.js';
 import { Injectable, Logger } from '@nestjs/common';
 import { AzioniRepository, type Azione } from '../common/database/repositories/azioni.repository.js';
 import { RegoleFiltroService } from './regole-filtro.service.js';
@@ -65,7 +66,8 @@ export class TriggerService {
   // mai due azioni nello stesso giorno, anche se il job che la produce
   // viene rieseguito per un errore di rete (Fase 7, punto 4).
   private chiaveIdempotenza(richiesta: RichiestaAzione): string {
-    const giorno = new Date().toISOString().slice(0, 10);
+    // Giorno italiano: a mezzanotte in Italia si riparte, non alle 2:00 (UTC).
+    const giorno = new Intl.DateTimeFormat('en-CA', { timeZone: FUSO }).format(new Date());
     return [richiesta.clienteId, richiesta.recordRiferimento, richiesta.tipo, giorno].join(':');
   }
 }

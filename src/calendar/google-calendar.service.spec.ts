@@ -98,6 +98,33 @@ describe('GoogleCalendarService', () => {
     expect(corpo.end).toEqual({ dateTime: '2026-10-05T10:30:00', timeZone: 'Europe/Rome' });
   });
 
+  it('evento di tutto il giorno: date senza orario e avvisi (notifica + email) personalizzati', async () => {
+    const fetchSpy = vi.fn(async () => ({ ok: true, json: async () => ({ id: 'evt', start: { date: '2026-11-30' } }) }));
+    global.fetch = fetchSpy as unknown as typeof fetch;
+
+    const service = new GoogleCalendarService(creaTokenServiceFinto());
+    const evento = await service.creaEventoGiornaliero(
+      'cliente-1',
+      { titolo: 'Scadenza: Fattura', giorno: '2026-11-30', giornoFine: '2026-12-01', avvisoMinuti: 9540 },
+      'abc123',
+    );
+
+    const corpo = JSON.parse(String((fetchSpy.mock.calls[0] as unknown as [string, RequestInit])[1].body));
+    expect(corpo).toMatchObject({
+      id: 'abc123',
+      start: { date: '2026-11-30' },
+      end: { date: '2026-12-01' },
+      reminders: {
+        useDefault: false,
+        overrides: [
+          { method: 'popup', minutes: 9540 },
+          { method: 'email', minutes: 9540 },
+        ],
+      },
+    });
+    expect(evento.inizio).toBe('2026-11-30');
+  });
+
   it('con un id scelto da noi: se l\'evento esiste gia\' (409) restituisce quello, senza doppioni', async () => {
     const fetchSpy = vi
       .fn()

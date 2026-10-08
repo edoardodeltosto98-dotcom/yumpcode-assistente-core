@@ -8,6 +8,7 @@ import { EsecuzioneWorker } from './esecuzione.worker.js';
 import {
   ESECUTORI_AZIONE,
   creaEsecutoreEventoCalendario,
+  creaEsecutorePromemoriaScadenza,
   creaEsecutoreTestFallisce,
   esecutoreTest,
   type EsecutoreAzione,
@@ -26,7 +27,7 @@ import {
       provide: ESECUTORI_AZIONE,
       inject: [GoogleCalendarService],
       useFactory: (calendar: GoogleCalendarService): EsecutoreAzione[] => {
-        const veri = [creaEsecutoreEventoCalendario(calendar)];
+        const veri = [creaEsecutoreEventoCalendario(calendar), creaEsecutorePromemoriaScadenza(calendar)];
         if (process.env.NODE_ENV === 'production') return veri;
         return [...veri, esecutoreTest, creaEsecutoreTestFallisce()];
       },
